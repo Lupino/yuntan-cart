@@ -101,6 +101,7 @@ application = do
   get "/api/orders/" getOrderListHandler
 
   get "/api/orders/:orderIdOrSN/" $ requireOrder json
+  delete "/api/orders/:orderIdOrSN/" $ requireOrder removeOrderHandler
 
   get  "/api/orders_by/user/:username/" getOrderListByUserNameHandler
   get  "/api/orders_by/user/:username/:orderIdOrSN/" $ requireOrder $ requireOwner json

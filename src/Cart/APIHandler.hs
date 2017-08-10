@@ -15,6 +15,7 @@ module Cart.APIHandler
   , updateOrderStatusHandler
   , updateOrderBodyHandler
   , updateOrderAmountHandler
+  , removeOrderHandler
   ) where
 
 import Control.Monad (void)
@@ -147,6 +148,12 @@ getOrderListByUserNameAndStatusHandler = do
   name <- param "username"
   st <- param "status"
   resultOrderList (getOrderListByUserNameAndStatus name st) (countOrderByUserNameAndStatus name st)
+
+-- DELETE /api/orders/:orderIdOrSN/
+removeOrderHandler :: Order -> ActionM ()
+removeOrderHandler (Order { orderID = oid }) = do
+  void $ lift $ removeOrder oid
+  resultOK
 
 resultOK :: ActionM ()
 resultOK = ok "result" ("OK" :: String)
