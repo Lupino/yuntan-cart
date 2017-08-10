@@ -29,7 +29,7 @@ addProduct name pid num prefix conn = do
     fromIntegral <$> insertID conn
 
   where insertSQL = fromString $ concat [ "INSERT INTO `", prefix, "_carts` "
-                                        , "(`username`, `product_id`, 'number', `created_at`)"
+                                        , "(`username`, `product_id`, `number`, `created_at`)"
                                         , " VALUES "
                                         , "(?, ?, ?, ?)"
                                         ]
@@ -37,7 +37,7 @@ addProduct name pid num prefix conn = do
 updateProduct :: CartID -> Int -> TablePrefix -> Connection -> IO Int64
 updateProduct cartId num prefix conn = execute conn updateSQL (Only cartId)
   where updateSQL = fromString $ concat [ "UPDATE `", prefix, "_carts` "
-                                        , "SET `number` = `number` ", op, show num'
+                                        , "SET `number` = `number` ", op, show num', " "
                                         , "WHERE `id` = ?"
                                         ]
 
@@ -48,7 +48,7 @@ checkProduct :: UserName -> ProductID -> TablePrefix -> Connection -> IO Int64
 checkProduct name pid prefix conn =
   maybe 0 fromOnly . listToMaybe <$> query conn checkSQL (name, pid)
 
-  where checkSQL = fromString $ concat [ "SELECT `cart_id` FROM `", prefix, "_carts` "
+  where checkSQL = fromString $ concat [ "SELECT `id` FROM `", prefix, "_carts` "
                                        , "WHERE `username` = ? AND `product_id` = ?"
                                        ]
 

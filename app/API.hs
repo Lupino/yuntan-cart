@@ -95,17 +95,16 @@ application = do
   post "/api/orders/" createOrderHandler
 
   post "/api/orders/:orderIdOrSN/status/:status/" $ requireOrder updateOrderStatusHandler
-  post "/api/orders_by/user/:username/:orderIdOrSN/status/:status/" $
-    requireOrder $ requireOwner updateOrderStatusHandler
-
   post "/api/orders/:orderIdOrSN/body/" $ requireOrder updateOrderBodyHandler
   post "/api/orders/:orderIdOrSN/amount/" $ requireOrder updateOrderAmountHandler
 
   get "/api/orders/" getOrderListHandler
 
   get "/api/orders/:orderIdOrSN/" $ requireOrder json
-  get "/api/orders_by/user/:username/:orderIdOrSN/" $ requireOrder $ requireOwner json
 
-  get "/api/orders_by/status/:status/" getOrderListByStatusHandler
-  get "/api/orders_by/user/:username/" getOrderListByUserNameHandler
-  get "/api/orders_by/user/:username/status/:status" getOrderListByUserNameAndStatusHandler
+  get  "/api/orders_by/user/:username/" getOrderListByUserNameHandler
+  get  "/api/orders_by/user/:username/:orderIdOrSN/" $ requireOrder $ requireOwner json
+  get  "/api/orders_by/user/:username/status/:status" getOrderListByUserNameAndStatusHandler
+  get  "/api/orders_by/status/:status/" getOrderListByStatusHandler
+  post "/api/orders_by/user/:username/:orderIdOrSN/status/:status/" $
+    requireOrder $ requireOwner updateOrderStatusHandler

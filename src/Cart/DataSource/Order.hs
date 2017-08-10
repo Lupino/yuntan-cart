@@ -47,7 +47,7 @@ createOrder name sn body amount status prefix conn = do
   fromIntegral <$> insertID conn
 
   where insertSQL = fromString $ concat [ "INSERT INTO `", prefix, "_orders` "
-                                        , "(`username`, `order_sn`, 'body, `amount`, `status`, `created_at`)"
+                                        , "(`username`, `order_sn`, `body`, `amount`, `status`, `created_at`)"
                                         , " VALUES "
                                         , "(?, ?, ?, ?, ?, ?)"
                                         ]
@@ -133,22 +133,22 @@ getOrderListByUserNameAndStatus name status from size o prefix conn =
 
 countOrder :: TablePrefix -> Connection -> IO Int64
 countOrder prefix conn = maybe 0 fromOnly . listToMaybe <$> query_ conn sql
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders`" ]
+  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` " ]
 
 countOrderByStatus :: OrderStatus -> TablePrefix -> Connection -> IO Int64
 countOrderByStatus status prefix conn = maybe 0 fromOnly . listToMaybe <$> query conn sql (Only status)
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders`"
+  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` "
                                   , "WHERE `status` = ?"
                                   ]
 
 countOrderByUserName :: UserName -> TablePrefix -> Connection -> IO Int64
 countOrderByUserName name prefix conn = maybe 0 fromOnly . listToMaybe <$> query conn sql (Only name)
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders`"
+  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` "
                                   , "WHERE `username` = ?"
                                   ]
 
 countOrderByUserNameAndStatus :: UserName -> OrderStatus -> TablePrefix -> Connection -> IO Int64
 countOrderByUserNameAndStatus name status prefix conn = maybe 0 fromOnly . listToMaybe <$> query conn sql (name, status)
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders`"
+  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` "
                                   , "WHERE `username` = ? AND `status` = ?"
                                   ]
