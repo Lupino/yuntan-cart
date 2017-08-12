@@ -10,7 +10,7 @@ module Cart.Config
 
 import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
 
-import Dispatch.Config.MySQLConfig (MySQLConfig (..), genMySQLPool)
+import Yuntan.Config.MySQLConfig (MySQLConfig (..), genMySQLPool)
 
 data Config = Config { mysqlConfig :: MySQLConfig }
   deriving (Show)

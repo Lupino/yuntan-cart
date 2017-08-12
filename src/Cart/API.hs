@@ -30,8 +30,8 @@ import Cart.DataSource
 import Cart.Types
 import Cart.UserEnv (CartM)
 
-import Dispatch.Types.ListResult (From, Size)
-import Dispatch.Types.OrderBy (OrderBy)
+import Yuntan.Types.ListResult (From, Size)
+import Yuntan.Types.OrderBy (OrderBy)
 
 
 addProduct :: UserName -> ProductID -> Int -> CartM CartID

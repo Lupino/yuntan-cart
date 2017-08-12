@@ -54,7 +54,7 @@ main = execParser opts >>= program
     opts = info (helper <*> parser)
       ( fullDesc
      <> progDesc "Cart micro server"
-     <> header "dispatch-cart - Cart micro server" )
+     <> header "yuntan-cart - Cart micro server" )
 
 program :: Options -> IO ()
 program Options { getConfigFile  = confFile

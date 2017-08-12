@@ -21,8 +21,8 @@ import Cart.DataSource.Order
 import Cart.DataSource.Table
 import Cart.Types
 import Cart.UserEnv (UserEnv (..))
-import Dispatch.Types.ListResult (From, Size)
-import Dispatch.Types.OrderBy (OrderBy)
+import Yuntan.Types.ListResult (From, Size)
+import Yuntan.Types.OrderBy (OrderBy)
 
 import qualified Control.Exception (SomeException, bracket_, try)
 import Data.Int (Int64)
@@ -97,16 +97,16 @@ instance DataSourceName CartReq where
   dataSourceName _ = "CartDataSource"
 
 instance DataSource UserEnv CartReq where
-  fetch = dispatchFetch
+  fetch = yuntanFetch
 
-dispatchFetch
+yuntanFetch
   :: State CartReq
   -> Flags
   -> UserEnv
   -> [BlockedFetch CartReq]
   -> PerformFetch
 
-dispatchFetch _state _flags _user blockedFetches = AsyncFetch $ \inner -> do
+yuntanFetch _state _flags _user blockedFetches = AsyncFetch $ \inner -> do
   sem <- newQSem $ numThreads _state
   asyncs <- mapM (fetchAsync sem _user) blockedFetches
   inner
