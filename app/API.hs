@@ -13,7 +13,7 @@ import Web.Scotty.Trans (delete, get, middleware, post, scottyOptsT, settings, j
 
 import Cart
 import Cart.APIHandler
-import Haxl.Core (StateStore, initEnv, runHaxl)
+import Haxl.Core (StateStore, initEnv, runHaxl, stateEmpty, stateSet)
 
 import qualified Cart.Config as C
 import qualified Data.Yaml as Y
@@ -69,7 +69,7 @@ program Options { getConfigFile  = confFile
 
   pool <- C.genMySQLPool mysqlConfig
 
-  let state = initGlobalState mysqlThreads
+  let state = stateSet (initCartState mysqlThreads) stateEmpty
 
   let userEnv = UserEnv { mySQLPool = pool, tablePrefix = prefix }
 

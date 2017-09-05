@@ -9,7 +9,7 @@
 
 module Cart.DataSource (
     CartReq(..),
-    initGlobalState
+    initCartState
   ) where
 
 import Data.Hashable (Hashable (..))
@@ -152,6 +152,5 @@ fetchReq (CountOrderByUserNameAndStatus a b) = countOrderByUserNameAndStatus a b
 
 fetchReq CreateTable = createTable
 
-initGlobalState :: Int -> StateStore
-initGlobalState threads = stateSet state stateEmpty
-  where state = CartState threads
+initCartState :: Int -> State CartReq
+initCartState = CartState
