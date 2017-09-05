@@ -24,73 +24,73 @@ module Cart.API
   ) where
 
 import Data.Int (Int64)
-import Haxl.Core (uncachedRequest, dataFetch)
+import Haxl.Core (GenHaxl, dataFetch, uncachedRequest)
+import Yuntan.Types.HasMySQL (HasMySQL)
 
 import Cart.DataSource
 import Cart.Types
-import Cart.UserEnv (CartM)
 
 import Yuntan.Types.ListResult (From, Size)
 import Yuntan.Types.OrderBy (OrderBy)
 
 
-addProduct :: UserName -> ProductID -> Int -> CartM CartID
+addProduct :: HasMySQL u => UserName -> ProductID -> Int -> GenHaxl u CartID
 addProduct name pid num = uncachedRequest (AddProduct name pid num)
 
-getCart :: UserName -> CartM [Cart]
+getCart :: HasMySQL u => UserName -> GenHaxl u [Cart]
 getCart name = uncachedRequest (GetCart name)
 
-removeProduct :: UserName -> ProductID -> CartM Int64
+removeProduct :: HasMySQL u => UserName -> ProductID -> GenHaxl u Int64
 removeProduct name pid = uncachedRequest (RemoveProduct name pid)
 
-createTable :: CartM Int64
+createTable :: HasMySQL u => GenHaxl u Int64
 createTable = uncachedRequest CreateTable
 
-createOrder :: UserName -> OrderSN -> OrderBody -> OrderAmount -> OrderStatus
-            -> CartM OrderID
+createOrder :: HasMySQL u => UserName -> OrderSN -> OrderBody -> OrderAmount -> OrderStatus
+            -> GenHaxl u OrderID
 createOrder a b c d e = uncachedRequest (CreateOrder a b c d e)
 
-getOrderById :: OrderID -> CartM (Maybe Order)
+getOrderById :: HasMySQL u => OrderID -> GenHaxl u (Maybe Order)
 getOrderById a = dataFetch (GetOrderById a)
 
-getOrderBySN :: OrderSN -> CartM (Maybe Order)
+getOrderBySN :: HasMySQL u => OrderSN -> GenHaxl u (Maybe Order)
 getOrderBySN a = dataFetch (GetOrderBySN a)
 
-removeOrder :: OrderID -> CartM Int64
+removeOrder :: HasMySQL u => OrderID -> GenHaxl u Int64
 removeOrder a = uncachedRequest (RemoveOrder a)
 
-updateOrderStatus :: OrderID -> OrderStatus -> CartM Int64
+updateOrderStatus :: HasMySQL u => OrderID -> OrderStatus -> GenHaxl u Int64
 updateOrderStatus a b = uncachedRequest (UpdateOrderStatus a b)
 
-updateOrderAmount :: OrderID -> OrderAmount -> CartM Int64
+updateOrderAmount :: HasMySQL u => OrderID -> OrderAmount -> GenHaxl u Int64
 updateOrderAmount a b = uncachedRequest (UpdateOrderAmount a b)
 
-updateOrderBody  :: OrderID -> OrderBody -> CartM Int64
+updateOrderBody  :: HasMySQL u => OrderID -> OrderBody -> GenHaxl u Int64
 updateOrderBody a b = uncachedRequest (UpdateOrderBody a b)
 
-getOrderList :: From -> Size -> OrderBy -> CartM [Order]
+getOrderList :: HasMySQL u => From -> Size -> OrderBy -> GenHaxl u [Order]
 getOrderList a b c = dataFetch (GetOrderList a b c)
 
-getOrderListByStatus  :: OrderStatus -> From -> Size -> OrderBy
-                      -> CartM [Order]
+getOrderListByStatus  :: HasMySQL u => OrderStatus -> From -> Size -> OrderBy
+                      -> GenHaxl u [Order]
 getOrderListByStatus a b c d = dataFetch (GetOrderListByStatus a b c d)
 
-getOrderListByUserName :: UserName
-                       -> From -> Size -> OrderBy -> CartM [Order]
+getOrderListByUserName :: HasMySQL u => UserName
+                       -> From -> Size -> OrderBy -> GenHaxl u [Order]
 getOrderListByUserName a b c d = dataFetch (GetOrderListByUserName a b c d)
 
-getOrderListByUserNameAndStatus :: UserName -> OrderStatus
-                                -> From -> Size -> OrderBy -> CartM [Order]
+getOrderListByUserNameAndStatus :: HasMySQL u => UserName -> OrderStatus
+                                -> From -> Size -> OrderBy -> GenHaxl u [Order]
 getOrderListByUserNameAndStatus a b c d e = dataFetch (GetOrderListByUserNameAndStatus a b c d e)
 
-countOrder :: CartM Int64
+countOrder :: HasMySQL u => GenHaxl u Int64
 countOrder = dataFetch CountOrder
 
-countOrderByStatus :: OrderStatus -> CartM Int64
+countOrderByStatus :: HasMySQL u => OrderStatus -> GenHaxl u Int64
 countOrderByStatus a = dataFetch (CountOrderByStatus a)
 
-countOrderByUserName :: UserName -> CartM Int64
+countOrderByUserName :: HasMySQL u => UserName -> GenHaxl u Int64
 countOrderByUserName a = dataFetch (CountOrderByUserName a)
 
-countOrderByUserNameAndStatus :: UserName -> OrderStatus -> CartM Int64
+countOrderByUserNameAndStatus :: HasMySQL u => UserName -> OrderStatus -> GenHaxl u Int64
 countOrderByUserNameAndStatus a b = dataFetch (CountOrderByUserNameAndStatus a b)

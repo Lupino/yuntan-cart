@@ -20,7 +20,7 @@ import Cart.DataSource.Cart
 import Cart.DataSource.Order
 import Cart.DataSource.Table
 import Cart.Types
-import Cart.UserEnv (UserEnv (..))
+import Yuntan.Types.HasMySQL (HasMySQL, mysqlPool, tablePrefix)
 import Yuntan.Types.ListResult (From, Size)
 import Yuntan.Types.OrderBy (OrderBy)
 
@@ -96,13 +96,14 @@ instance StateKey CartReq where
 instance DataSourceName CartReq where
   dataSourceName _ = "CartDataSource"
 
-instance DataSource UserEnv CartReq where
+instance HasMySQL u => DataSource u CartReq where
   fetch = yuntanFetch
 
 yuntanFetch
-  :: State CartReq
+  :: HasMySQL u
+  => State CartReq
   -> Flags
-  -> UserEnv
+  -> u
   -> [BlockedFetch CartReq]
   -> PerformFetch
 
@@ -112,13 +113,13 @@ yuntanFetch _state _flags _user blockedFetches = AsyncFetch $ \inner -> do
   inner
   mapM_ wait asyncs
 
-fetchAsync :: QSem -> UserEnv -> BlockedFetch CartReq -> IO (Async ())
+fetchAsync :: HasMySQL u => QSem -> u -> BlockedFetch CartReq -> IO (Async ())
 fetchAsync sem env req = async $
   Control.Exception.bracket_ (waitQSem sem) (signalQSem sem)
   $ withResource pool
   $ fetchSync req prefix
 
-  where pool   = mySQLPool env
+  where pool   = mysqlPool env
         prefix = tablePrefix env
 
 fetchSync :: BlockedFetch CartReq -> TablePrefix -> Connection -> IO ()
