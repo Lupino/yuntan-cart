@@ -81,7 +81,7 @@ instance QueryResults Order where
     where !orderID        = convert fa va
           !orderSN        = convert fb vb
           !orderUserName  = convert fc vc
-          !orderBody      = fromMaybe Null . decodeStrict $ convert fd vd
+          !orderBody      = fromMaybe Null . decodeStrict $ fromMaybe "{}" vd
           !orderAmount    = convert fe ve
           !orderStatus    = convert ff vf
           !orderCreatedAt = convert fg vg
