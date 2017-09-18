@@ -73,7 +73,7 @@ apiOrder = do
   order <- lift $ getOrderBySN (pack name)
   case order of
     Just o -> return $ Just o
-    Nothing -> do
+    Nothing ->
       if isDigest name then lift (getOrderById $ read name)
                        else return Nothing
 
@@ -108,22 +108,22 @@ createOrderHandler = do
 -- POST /api/orders/:orderIdOrSN/status/:status/
 -- POST /api/orders_by/user/:username/:orderIdOrSN/status/:status/
 updateOrderStatusHandler :: HasMySQL u => Order -> ActionH u ()
-updateOrderStatusHandler (Order { orderID = oid }) = do
+updateOrderStatusHandler Order{orderID = oid} = do
   st <- param "status"
   ret <- lift $ updateOrderStatus oid st
   resultOKOrErr ret "update order status failed"
 
 -- POST /api/orders/:orderIdOrSN/body/
 updateOrderBodyHandler :: HasMySQL u => Order -> ActionH u ()
-updateOrderBodyHandler (Order { orderID = oid, orderBody = obody }) = do
+updateOrderBodyHandler Order{orderID = oid, orderBody = obody} = do
   body <- param "body"
-  case (decode body) of
+  case decode body of
     Just ev -> void (lift $ updateOrderBody oid $ unionValue ev obody) >> resultOK
     Nothing -> errBadRequest "body filed is required."
 
 -- POST /api/orders/:orderIdOrSN/amount/
 updateOrderAmountHandler :: HasMySQL u => Order -> ActionH u ()
-updateOrderAmountHandler (Order { orderID = oid }) = do
+updateOrderAmountHandler Order{orderID = oid} = do
   amount <- param "amount"
   ret <- lift $ updateOrderAmount oid amount
   resultOKOrErr ret "update order amount failed"
@@ -153,7 +153,7 @@ getOrderListByUserNameAndStatusHandler = do
 
 -- DELETE /api/orders/:orderIdOrSN/
 removeOrderHandler :: HasMySQL u => Order -> ActionH u ()
-removeOrderHandler (Order { orderID = oid }) = do
+removeOrderHandler Order{orderID = oid} = do
   void $ lift $ removeOrder oid
   resultOK
 

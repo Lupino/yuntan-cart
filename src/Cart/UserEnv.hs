@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Cart.UserEnv
   (
     UserEnv (..)
