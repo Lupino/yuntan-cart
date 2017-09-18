@@ -11,12 +11,12 @@ import Network.Wai.Handler.Warp (setHost, setPort)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import Web.Scotty.Trans (delete, get, middleware, post, scottyOptsT, settings, json)
 
-import Yuntan.Types.HasMySQL (HasMySQL)
+import Yuntan.Types.HasMySQL (HasMySQL, simpleEnv)
 import Yuntan.Utils.Scotty (ScottyH)
 
 import Cart
 import Cart.APIHandler
-import Haxl.Core (StateStore, initEnv, runHaxl, stateEmpty, stateSet)
+import Haxl.Core (StateStore, initEnv, runHaxl, stateEmpty, stateSet, GenHaxl)
 
 import qualified Cart.Config as C
 import qualified Data.Yaml as Y
@@ -74,15 +74,15 @@ program Options { getConfigFile  = confFile
 
   let state = stateSet (initCartState mysqlThreads) stateEmpty
 
-  let userEnv = UserEnv { mySQLPool = pool, tablePrefix = prefix }
+  let u = simpleEnv pool prefix
 
   let opts = def { settings = setPort port
                             $ setHost (Host host) (settings def) }
 
-  _ <- runIO userEnv state createTable
-  scottyOptsT opts (runIO userEnv state) application
+  _ <- runIO u state createTable
+  scottyOptsT opts (runIO u state) application
   where
-        runIO :: UserEnv -> StateStore -> CartM b -> IO b
+        runIO :: HasMySQL u => u -> StateStore -> GenHaxl u b -> IO b
         runIO env s m = do
           env0 <- initEnv s env
           runHaxl env0 m

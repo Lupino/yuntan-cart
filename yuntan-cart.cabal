@@ -17,7 +17,6 @@ library
   hs-source-dirs:      src
   exposed-modules:     Cart
                      , Cart.Types
-                     , Cart.UserEnv
                      , Cart.DataSource
                      , Cart.DataSource.Cart
                      , Cart.DataSource.Order
