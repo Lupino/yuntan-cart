@@ -22,7 +22,8 @@ import Control.Monad (void)
 import Control.Monad.Reader (lift)
 
 import Cart
-import Yuntan.Utils.Scotty (err, ok, errNotFound, errBadRequest, okListResult, ActionH)
+import Yuntan.Utils.Scotty (err, ok, errNotFound, errBadRequest, okListResult)
+import Yuntan.Types.Scotty (ActionH)
 import Yuntan.Types.HasMySQL (HasMySQL)
 import Haxl.Core (GenHaxl)
 import Network.HTTP.Types (status500, status403)

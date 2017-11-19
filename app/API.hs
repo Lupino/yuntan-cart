@@ -12,7 +12,7 @@ import Network.Wai.Middleware.RequestLogger (logStdout)
 import Web.Scotty.Trans (delete, get, middleware, post, scottyOptsT, settings, json)
 
 import Yuntan.Types.HasMySQL (HasMySQL, simpleEnv)
-import Yuntan.Utils.Scotty (ScottyH)
+import Yuntan.Types.Scotty (ScottyH)
 
 import Cart
 import Cart.APIHandler
