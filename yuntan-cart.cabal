@@ -41,7 +41,12 @@ library
                      , cryptohash
                      , hex
 
-                     , yuntan-common
+                     , yuntan-common-config-mysql
+                     , yuntan-common-list-result
+                     , yuntan-common-order
+                     , yuntan-common-scotty
+                     , yuntan-common-scotty-type
+                     , yuntan-common-json
   default-language:    Haskell2010
 
 executable yuntan-cart
@@ -59,7 +64,8 @@ executable yuntan-cart
                      , data-default-class
                      , yaml
                      , text
-                     , yuntan-common
+                     , yuntan-common-config-mysql
+                     , yuntan-common-scotty-type
   default-language:    Haskell2010
 
 source-repository head
