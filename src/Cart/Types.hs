@@ -76,7 +76,7 @@ data Order = Order { orderID        :: OrderID
   deriving (Show)
 
 instance QueryResults Order where
-  convertResults [fa, fb, fc, fd, fe, ff, fg]
+  convertResults [fa, fb, fc, _, fe, ff, fg]
                  [va, vb, vc, vd, ve, vf, vg] = Order {..}
     where !orderID        = convert fa va
           !orderSN        = convert fb vb
