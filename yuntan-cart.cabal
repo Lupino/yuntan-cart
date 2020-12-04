@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Cart
-                     , Cart.Types
+                       Cart.Types
                      , Cart.DataSource
                      , Cart.DataSource.Cart
                      , Cart.DataSource.Order
@@ -28,25 +28,22 @@ library
   build-depends:       base >= 4.7 && < 5
                      , unix-time
                      , text
-                     , mysql-simple
+                     , psql-utils
+                     -- , mysql-simple
                      , hashable
                      , scotty
+                     , scotty-haxl
+                     , scotty-utils
                      , haxl
                      , resource-pool
                      , async
                      , bytestring
                      , mtl
                      , aeson
+                     , aeson-result
+                     , aeson-helper
                      , http-types
                      , cryptohash
-                     , hex
-
-                     , yuntan-common-config-mysql
-                     , yuntan-common-list-result
-                     , yuntan-common-order
-                     , yuntan-common-scotty
-                     , yuntan-common-scotty-type
-                     , yuntan-common-json
   default-language:    Haskell2010
 
 executable yuntan-cart
@@ -64,8 +61,8 @@ executable yuntan-cart
                      , data-default-class
                      , yaml
                      , text
-                     , yuntan-common-config-mysql
-                     , yuntan-common-scotty-type
+                     , psql-utils
+                     , scotty-haxl
   default-language:    Haskell2010
 
 source-repository head

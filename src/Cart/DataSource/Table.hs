@@ -1,49 +1,52 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Cart.DataSource.Table
-  (
-    createTable
+  ( mergeData
+  , carts
+  , orders
   ) where
 
-import Database.MySQL.Simple (Connection, execute_)
+import           Data.Int            (Int64)
+import           Database.PSQL.Types (PSQL, TableName, VersionList, createIndex,
+                                      createTable, mergeDatabase)
 
-import Data.Int (Int64)
-import Data.String (fromString)
+carts :: TableName
+carts = "carts"
 
-import Cart.Types
+orders :: TableName
+orders = "orders"
+
+createCartTable :: PSQL Int64
+createCartTable = createTable carts
+  [ "id SERIAL PRIMARY KEY"
+  , "username VARCHAR(128) NOT NULL"
+  , "product_id INT DEFAULT '0'"
+  , "number INT DEFAULT '0'"
+  , "created_at INT DEFAULT '0'"
+  ]
 
 
-createCartTable :: TablePrefix -> Connection -> IO Int64
-createCartTable prefix conn = execute_ conn sql
-  where sql = fromString $ concat [ "CREATE TABLE IF NOT EXISTS `", prefix, "_carts` ("
-                                  , "  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,"
-                                  , "  `username` varchar(128) NOT NULL,"
-                                  , "  `product_id` int(10) unsigned NOT NULL,"
-                                  , "  `number` int(10) unsigned NOT NULL,"
-                                  , "  `created_at` int(10) unsigned NOT NULL,"
-                                  , "  PRIMARY KEY (`id`),"
-                                  , "  UNIQUE KEY `username_product` (`username`, `product_id`)"
-                                  , ") ENGINE=InnoDB DEFAULT CHARSET=utf8"
-                                  ]
+createOrderTable :: PSQL Int64
+createOrderTable = createTable orders
+  [ "id SERIAL PRIMARY KEY"
+  , "order_sn VARCHAR(128) NOT NULL"
+  , "username VARCHAR(128) NOT NULL"
+  , "body JSON"
+  , "amount INT DEFAULT '0'"
+  , "status VARCHAR(10) NOT NULL"
+  , "created_at INT DEFAULT '0'"
+  ]
 
-createOrderTable :: TablePrefix -> Connection -> IO Int64
-createOrderTable prefix conn = execute_ conn sql
-  where sql = fromString $ concat [ "CREATE TABLE IF NOT EXISTS `", prefix, "_orders` ("
-                                  , "  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,"
-                                  , "  `order_sn` varchar(128) NOT NULL,"
-                                  , "  `username` varchar(128) NOT NULL,"
-                                  , "  `body` TEXT DEFAULT NULL,"
-                                  , "  `amount` int(10) unsigned NOT NULL,"
-                                  , "  `status` varchar(10) NOT NULL,"
-                                  , "  `created_at` int(10) unsigned NOT NULL,"
-                                  , "  PRIMARY KEY (`id`),"
-                                  , "  UNIQUE KEY `order_sn` (`order_sn`),"
-                                  , "  KEY `username` (`username`),"
-                                  , "  KEY `status` (`status`)"
-                                  , ") ENGINE=InnoDB DEFAULT CHARSET=utf8"
-                                  ]
+versionList :: VersionList Int64
+versionList =
+  [ (1, [ createCartTable
+        , createIndex True carts "username_product" ["username", "product_id"]
+        , createOrderTable
+        , createIndex True orders "order_sn" ["order_sn"]
+        , createIndex False orders "username" ["username"]
+        , createIndex False orders "status" ["status"]
+        ])
+  ]
 
-createTable :: TablePrefix -> Connection -> IO Int64
-createTable prefix conn = sum <$> mapM (\o -> o prefix conn) [ createCartTable
-                                                             , createOrderTable
-                                                             ]
+mergeData :: PSQL ()
+mergeData = mergeDatabase versionList

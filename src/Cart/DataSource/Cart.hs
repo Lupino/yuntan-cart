@@ -1,63 +1,48 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Cart.DataSource.Cart
-  (
-    addProduct
+  ( addProduct
   , getCart
   , removeProduct
   ) where
 
-import Control.Monad (void)
-import Database.MySQL.Simple (Connection, Only (..), execute, insertID, query)
+import           Cart.DataSource.Table  (carts)
+import           Cart.Types
+import           Control.Monad          (void)
+import           Control.Monad.IO.Class (liftIO)
+import           Data.Int               (Int64)
+import           Data.String            (fromString)
+import           Data.UnixTime
+import           Database.PSQL.Types    (Only (..), PSQL, delete, insertRet,
+                                         none, select, selectOneOnly, update)
 
-import Data.Int (Int64)
-import Data.Maybe (listToMaybe)
-import Data.String (fromString)
-import Data.UnixTime
+addProduct :: UserName -> ProductID -> Int -> PSQL CartID
+addProduct name pid num = do
+  mcartId <- checkProduct name pid
+  case mcartId of
+    Just cartId -> do
+      void $ updateProduct cartId num
+      return cartId
+    Nothing -> do
+      t <- liftIO getUnixTime
+      insertRet carts
+        ["username", "product_id", "number", "created_at"] "id"
+        (name, pid, num, show $ toEpochTime t) 0
 
-import Cart.Types
-
-addProduct :: UserName -> ProductID -> Int -> TablePrefix -> Connection -> IO CartID
-addProduct name pid num prefix conn = do
-  cartId <- checkProduct name pid prefix conn
-  if cartId > 0 then do
-    void $ updateProduct cartId num prefix conn
-    return cartId
-  else do
-    t <- getUnixTime
-    void $ execute conn insertSQL (name, pid, num, show $ toEpochTime t)
-    fromIntegral <$> insertID conn
-
-  where insertSQL = fromString $ concat [ "INSERT INTO `", prefix, "_carts` "
-                                        , "(`username`, `product_id`, `number`, `created_at`)"
-                                        , " VALUES "
-                                        , "(?, ?, ?, ?)"
-                                        ]
-
-updateProduct :: CartID -> Int -> TablePrefix -> Connection -> IO Int64
-updateProduct cartId num prefix conn = execute conn updateSQL (Only cartId)
-  where updateSQL = fromString $ concat [ "UPDATE `", prefix, "_carts` "
-                                        , "SET `number` = `number` ", op, show num', " "
-                                        , "WHERE `id` = ?"
-                                        ]
-
-        op = if num > 0 then "+" else "-"
+updateProduct :: CartID -> Int -> PSQL Int64
+updateProduct cartId num =
+  update carts [fromString $ "number = number " ++ op ++ " ?"] "id = ?" (show num', cartId)
+  where op = if num > 0 then "+" else "-"
         num' = if num > 0 then num else - num
 
-checkProduct :: UserName -> ProductID -> TablePrefix -> Connection -> IO Int64
-checkProduct name pid prefix conn =
-  maybe 0 fromOnly . listToMaybe <$> query conn checkSQL (name, pid)
+checkProduct :: UserName -> ProductID -> PSQL (Maybe Int64)
+checkProduct name pid =
+  selectOneOnly carts "id" "username = ? AND product_id = ?" (name, pid)
 
-  where checkSQL = fromString $ concat [ "SELECT `id` FROM `", prefix, "_carts` "
-                                       , "WHERE `username` = ? AND `product_id` = ?"
-                                       ]
+getCart :: UserName -> PSQL [Cart]
+getCart name =
+  select carts ["*"] "username = ?" (Only name) 0 500 none
 
-getCart :: UserName -> TablePrefix -> Connection -> IO [Cart]
-getCart name prefix conn = query conn sql (Only name)
-  where sql = fromString $ concat [ "SELECT * FROM `", prefix, "_carts` WHERE `username`=?"]
-
-removeProduct :: UserName -> ProductID -> TablePrefix -> Connection -> IO Int64
-removeProduct name pid prefix conn = execute conn sql (name, pid)
-  where sql = fromString $ concat [ "DELETE FROM `", prefix, "_carts` "
-                                  , "WHERE `username` = ? AND `product_id` = ?"
-                                  ]
+removeProduct :: UserName -> ProductID -> PSQL Int64
+removeProduct name pid =
+  delete carts "username = ? AND product_id = ?" (name, pid)

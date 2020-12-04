@@ -1,38 +1,36 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main
-  (
-    main
+  ( main
   ) where
 
+import           Cart
+import           Cart.APIHandler
 import           Data.Default.Class                   (def)
 import           Data.Streaming.Network.Internal      (HostPreference (Host))
+import           Data.String                          (fromString)
+import           Database.PSQL.Types                  (HasPSQL, simpleEnv)
+import           Haxl.Core                            (GenHaxl, StateStore,
+                                                       initEnv, runHaxl,
+                                                       stateEmpty, stateSet)
 import           Network.Wai.Handler.Warp             (setHost, setPort)
 import           Network.Wai.Middleware.RequestLogger (logStdout)
+import           Web.Scotty.Haxl                      (ScottyH)
 import           Web.Scotty.Trans                     (delete, get, json,
                                                        middleware, post,
                                                        scottyOptsT, settings)
 
-import           Yuntan.Types.HasMySQL                (HasMySQL, simpleEnv)
-import           Yuntan.Types.Scotty                  (ScottyH)
-
-import           Cart
-import           Cart.APIHandler
-import           Haxl.Core                            (GenHaxl, StateStore,
-                                                       initEnv, runHaxl,
-                                                       stateEmpty, stateSet)
-
 import qualified Cart.Config                          as C
 import qualified Data.Yaml                            as Y
 
-import           Data.Semigroup                       ((<>))
 import           Options.Applicative
 
-data Options = Options { getConfigFile  :: String
-                       , getHost        :: String
-                       , getPort        :: Int
-                       , getTablePrefix :: String
-                       }
+data Options = Options
+  { getConfigFile  :: String
+  , getHost        :: String
+  , getPort        :: Int
+  , getTablePrefix :: String
+  }
 
 parser :: Parser Options
 parser = Options <$> strOption (long "config"
@@ -71,27 +69,27 @@ program Options { getConfigFile  = confFile
                 } = do
   (Right conf) <- Y.decodeFileEither confFile
 
-  let mysqlConfig  = C.mysqlConfig conf
-      mysqlThreads = C.mysqlHaxlNumThreads mysqlConfig
+  let psqlConfig  = C.psqlConfig conf
+      psqlThreads = C.psqlHaxlNumThreads psqlConfig
 
-  pool <- C.genMySQLPool mysqlConfig
+  pool <- C.genPSQLPool psqlConfig
 
-  let state = stateSet (initCartState mysqlThreads) stateEmpty
+  let state = stateSet (initCartState psqlThreads) stateEmpty
 
-  let u = simpleEnv pool prefix ()
+  let u = simpleEnv pool (fromString prefix) ()
 
   let opts = def { settings = setPort port
                             $ setHost (Host host) (settings def) }
 
-  _ <- runIO u state createTable
+  runIO u state mergeData
   scottyOptsT opts (runIO u state) application
   where
-        runIO :: HasMySQL u => u -> StateStore -> GenHaxl u w b -> IO b
+        runIO :: HasPSQL u => u -> StateStore -> GenHaxl u w b -> IO b
         runIO env s m = do
           env0 <- initEnv s env
           runHaxl env0 m
 
-application :: HasMySQL u => ScottyH u w ()
+application :: HasPSQL u => ScottyH u w ()
 application = do
   middleware logStdout
 

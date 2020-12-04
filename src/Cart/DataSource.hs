@@ -6,30 +6,26 @@
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Cart.DataSource (
-    CartReq(..),
-    initCartState
+module Cart.DataSource
+  ( CartReq(..)
+  , initCartState
   ) where
 
-import Data.Hashable (Hashable (..))
-import Data.Typeable (Typeable)
-import Haxl.Core hiding (env, fetchReq)
-
-import Cart.DataSource.Cart
-import Cart.DataSource.Order
-import Cart.DataSource.Table
-import Cart.Types
-import Yuntan.Types.HasMySQL (HasMySQL, mysqlPool, tablePrefix)
-import Yuntan.Types.ListResult (From, Size)
-import Yuntan.Types.OrderBy (OrderBy)
-
-import qualified Control.Exception (SomeException, bracket_, try)
-import Data.Int (Int64)
-import Data.Pool (withResource)
-import Database.MySQL.Simple (Connection)
-
-import Control.Concurrent.Async
-import Control.Concurrent.QSem
+import           Cart.DataSource.Cart
+import           Cart.DataSource.Order
+import           Cart.DataSource.Table
+import           Cart.Types
+import           Control.Concurrent.Async
+import           Control.Concurrent.QSem
+import qualified Control.Exception        (SomeException, bracket_, try)
+import           Data.Hashable            (Hashable (..))
+import           Data.Int                 (Int64)
+import           Data.Pool                (withResource)
+import           Data.Typeable            (Typeable)
+import           Database.PSQL.Types      (Connection, From, HasPSQL, OrderBy,
+                                           PSQL, Size, TablePrefix, psqlPool,
+                                           runPSQL, tablePrefix)
+import           Haxl.Core                hiding (env, fetchReq)
 
 -- Data source implementation.
 
@@ -58,7 +54,7 @@ data CartReq a where
   CountOrderByUserName :: UserName -> CartReq Int64
   CountOrderByUserNameAndStatus :: UserName -> OrderStatus -> CartReq Int64
 
-  CreateTable :: CartReq Int64
+  MergeData :: CartReq ()
 
   deriving (Typeable)
 
@@ -84,7 +80,7 @@ instance Hashable (CartReq a) where
   hashWithSalt s (CountOrderByUserName a) = hashWithSalt s (23::Int, a)
   hashWithSalt s (CountOrderByUserNameAndStatus a b) = hashWithSalt s (24::Int, a, b)
 
-  hashWithSalt s CreateTable = hashWithSalt s (3::Int)
+  hashWithSalt s MergeData = hashWithSalt s (3::Int)
 
 deriving instance Show (CartReq a)
 instance ShowP CartReq where showp = show
@@ -95,11 +91,11 @@ instance StateKey CartReq where
 instance DataSourceName CartReq where
   dataSourceName _ = "CartDataSource"
 
-instance HasMySQL u => DataSource u CartReq where
+instance HasPSQL u => DataSource u CartReq where
   fetch = yuntanFetch
 
 yuntanFetch
-  :: HasMySQL u
+  :: HasPSQL u
   => State CartReq
   -> Flags
   -> u
@@ -111,23 +107,21 @@ yuntanFetch _state _flags _user = AsyncFetch $ \reqs inner -> do
   inner
   mapM_ wait asyncs
 
-fetchAsync :: HasMySQL u => QSem -> u -> BlockedFetch CartReq -> IO (Async ())
+fetchAsync :: HasPSQL u => QSem -> u -> BlockedFetch CartReq -> IO (Async ())
 fetchAsync sem env req = async $
-  Control.Exception.bracket_ (waitQSem sem) (signalQSem sem)
-  $ withResource pool
-  $ fetchSync req prefix
+  Control.Exception.bracket_ (waitQSem sem) (signalQSem sem) $ withResource pool $ fetchSync req prefix
 
-  where pool   = mysqlPool env
+  where pool   = psqlPool env
         prefix = tablePrefix env
 
 fetchSync :: BlockedFetch CartReq -> TablePrefix -> Connection -> IO ()
 fetchSync (BlockedFetch req rvar) prefix conn = do
-  e <- Control.Exception.try $ fetchReq req prefix conn
+  e <- Control.Exception.try $ runPSQL prefix conn (fetchReq req)
   case e of
     Left ex -> putFailure rvar (ex :: Control.Exception.SomeException)
     Right a -> putSuccess rvar a
 
-fetchReq :: CartReq a -> TablePrefix -> Connection -> IO a
+fetchReq :: CartReq a -> PSQL a
 fetchReq (AddProduct n p k) = addProduct n  p  k
 fetchReq (GetCart n) = getCart n
 fetchReq (RemoveProduct n p) = removeProduct n  p
@@ -148,7 +142,7 @@ fetchReq (CountOrderByStatus a) = countOrderByStatus a
 fetchReq (CountOrderByUserName a) = countOrderByUserName a
 fetchReq (CountOrderByUserNameAndStatus a b) = countOrderByUserNameAndStatus a b
 
-fetchReq CreateTable = createTable
+fetchReq MergeData = mergeData
 
 initCartState :: Int -> State CartReq
 initCartState = CartState

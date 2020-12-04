@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Cart.DataSource.Order
-  (
-    createOrder
+  ( createOrder
   , getOrderById
   , getOrderBySN
   , getOrderList
@@ -19,136 +18,72 @@ module Cart.DataSource.Order
   , removeOrder
   ) where
 
-import Control.Monad (void)
-import Database.MySQL.Simple (Connection, Only (..), execute, insertID, query
-                             , query_)
-
-import Data.Aeson (encode)
-import Data.Int (Int64)
-import Data.Maybe (listToMaybe)
-import Data.String (fromString)
-import Data.UnixTime
-
-import Yuntan.Types.ListResult (From, Size)
-import Yuntan.Types.OrderBy (OrderBy)
-
-import Cart.Types
+import           Cart.DataSource.Table  (orders)
+import           Cart.Types
+import           Control.Monad.IO.Class (liftIO)
+import           Data.Aeson             (encode)
+import           Data.Int               (Int64)
+import           Data.UnixTime
+import           Database.PSQL.Types    (From, Only (..), OrderBy, PSQL, Size,
+                                         count, count_, delete, insertRet,
+                                         select, selectOne, select_, update)
 
 createOrder :: UserName
             -> OrderSN
             -> OrderBody
             -> OrderAmount
             -> OrderStatus
-            -> TablePrefix -> Connection
-            -> IO OrderID
-createOrder name sn body amount status prefix conn = do
-  t <- getUnixTime
-  void $ execute conn insertSQL (name, sn, encode body, amount, status, show $ toEpochTime t)
-  fromIntegral <$> insertID conn
+            -> PSQL OrderID
+createOrder name sn body amount status = do
+   t <- liftIO getUnixTime
+   insertRet orders
+     ["username", "order_sn", "body", "amount", "status", "created_at"] "id"
+     (name, sn, encode body, amount, status, show $ toEpochTime t) 0
 
-  where insertSQL = fromString $ concat [ "INSERT INTO `", prefix, "_orders` "
-                                        , "(`username`, `order_sn`, `body`, `amount`, `status`, `created_at`)"
-                                        , " VALUES "
-                                        , "(?, ?, ?, ?, ?, ?)"
-                                        ]
+getOrderById :: OrderID -> PSQL (Maybe Order)
+getOrderById orderId = selectOne orders ["*"] "id = ?" (Only orderId)
 
-getOrderById :: OrderID -> TablePrefix -> Connection -> IO (Maybe Order)
-getOrderById orderId prefix conn = listToMaybe <$> query conn sql (Only orderId)
-  where sql = fromString $ concat [ "SELECT * FROM `", prefix, "_orders` "
-                                  , "WHERE `id` = ?"
-                                  ]
+getOrderBySN :: OrderSN -> PSQL (Maybe Order)
+getOrderBySN sn = selectOne orders ["*"] "order_sn = ?" (Only sn)
 
-getOrderBySN :: OrderSN -> TablePrefix -> Connection -> IO (Maybe Order)
-getOrderBySN sn prefix conn = listToMaybe <$> query conn sql (Only sn)
-  where sql = fromString $ concat [ "SELECT * FROM `", prefix, "_orders` "
-                                  , "WHERE `order_sn` = ?"
-                                  ]
+removeOrder :: OrderID -> PSQL Int64
+removeOrder orderId = delete orders "id = ?" (Only orderId)
 
-removeOrder :: OrderID -> TablePrefix -> Connection -> IO Int64
-removeOrder orderId prefix conn = execute conn sql (Only orderId)
-  where sql = fromString $ concat [ "DELETE FROM `", prefix, "_orders` "
-                                  , "WHERE `id` = ?"
-                                  ]
+updateOrderStatus :: OrderID -> OrderStatus -> PSQL Int64
+updateOrderStatus orderId status =
+  update orders ["status"] "id = ?" (status, orderId)
 
-updateOrderStatus :: OrderID -> OrderStatus -> TablePrefix -> Connection -> IO Int64
-updateOrderStatus orderId status prefix conn = execute conn sql (status, orderId)
-  where sql = fromString $ concat [ "UPDATE `", prefix, "_orders` "
-                                  , "SET `status` = ? "
-                                  , "WHERE `id` = ?"
-                                  ]
+updateOrderAmount :: OrderID -> OrderAmount -> PSQL Int64
+updateOrderAmount orderId amount =
+  update orders ["amount"] "id = ?" (amount, orderId)
 
-updateOrderAmount :: OrderID -> OrderAmount -> TablePrefix -> Connection -> IO Int64
-updateOrderAmount orderId amount prefix conn = execute conn sql (amount, orderId)
-  where sql = fromString $ concat [ "UPDATE `", prefix, "_orders` "
-                                  , "SET `amount` = ? "
-                                  , "WHERE `id` = ?"
-                                  ]
+updateOrderBody :: OrderID -> OrderBody -> PSQL Int64
+updateOrderBody orderId body =
+  update orders ["body"] "id = ?" (encode body, orderId)
 
-updateOrderBody :: OrderID -> OrderBody -> TablePrefix -> Connection -> IO Int64
-updateOrderBody orderId body prefix conn = execute conn sql (encode body, orderId)
-  where sql = fromString $ concat [ "UPDATE `", prefix, "_orders` "
-                                  , "SET `body` = ? "
-                                  , "WHERE `id` = ?"
-                                  ]
+getOrderList :: From -> Size -> OrderBy -> PSQL [Order]
+getOrderList = select_ orders ["*"]
 
-getOrderList :: From -> Size -> OrderBy
-             -> TablePrefix -> Connection
-             -> IO [Order]
-getOrderList from size o prefix conn = query conn sql (from, size)
-  where sql = fromString $ concat [ "SELECT * FROM `", prefix, "_orders` ", show o, " LIMIT ?,?" ]
+getOrderListByStatus :: OrderStatus -> From -> Size -> OrderBy -> PSQL [Order]
+getOrderListByStatus status = select orders ["*"] "status = ?" (Only status)
 
-getOrderListByStatus :: OrderStatus
-                     -> From -> Size -> OrderBy
-                     -> TablePrefix -> Connection
-                     -> IO [Order]
-getOrderListByStatus status from size o prefix conn =
-  query conn sql (status, from, size)
-  where sql = fromString $ concat [ "SELECT * FROM `", prefix, "_orders` "
-                                  , "WHERE `status` = ? "
-                                  , show o, " LIMIT ?,?"
-                                  ]
+getOrderListByUserName :: UserName -> From -> Size -> OrderBy -> PSQL [Order]
+getOrderListByUserName name = select orders ["*"] "username = ?" (Only name)
 
-getOrderListByUserName :: UserName
-                       -> From -> Size -> OrderBy
-                       -> TablePrefix -> Connection
-                       -> IO [Order]
-getOrderListByUserName name from size o prefix conn =
-  query conn sql (name, from, size)
-  where sql = fromString $ concat [ "SELECT * FROM `", prefix, "_orders` "
-                                  , "WHERE `username` = ? "
-                                  , show o, " LIMIT ?,?"
-                                  ]
+getOrderListByUserNameAndStatus
+  :: UserName -> OrderStatus -> From -> Size -> OrderBy -> PSQL [Order]
+getOrderListByUserNameAndStatus name status =
+  select orders ["*"] "username = ? AND status = ?" (name, status)
 
-getOrderListByUserNameAndStatus :: UserName
-                                -> OrderStatus
-                                -> From -> Size -> OrderBy
-                                -> TablePrefix -> Connection
-                                -> IO [Order]
-getOrderListByUserNameAndStatus name status from size o prefix conn =
-  query conn sql (name, status, from, size)
-  where sql = fromString $ concat [ "SELECT * FROM `", prefix, "_orders` "
-                                  , "WHERE `username` = ? AND `status` = ? "
-                                  , show o, " LIMIT ?,?"
-                                  ]
+countOrder :: PSQL Int64
+countOrder = count_ orders
 
-countOrder :: TablePrefix -> Connection -> IO Int64
-countOrder prefix conn = maybe 0 fromOnly . listToMaybe <$> query_ conn sql
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` " ]
+countOrderByStatus :: OrderStatus -> PSQL Int64
+countOrderByStatus status = count orders "status = ?" (Only status)
 
-countOrderByStatus :: OrderStatus -> TablePrefix -> Connection -> IO Int64
-countOrderByStatus status prefix conn = maybe 0 fromOnly . listToMaybe <$> query conn sql (Only status)
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` "
-                                  , "WHERE `status` = ?"
-                                  ]
+countOrderByUserName :: UserName -> PSQL Int64
+countOrderByUserName name = count orders "username = ?" (Only name)
 
-countOrderByUserName :: UserName -> TablePrefix -> Connection -> IO Int64
-countOrderByUserName name prefix conn = maybe 0 fromOnly . listToMaybe <$> query conn sql (Only name)
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` "
-                                  , "WHERE `username` = ?"
-                                  ]
-
-countOrderByUserNameAndStatus :: UserName -> OrderStatus -> TablePrefix -> Connection -> IO Int64
-countOrderByUserNameAndStatus name status prefix conn = maybe 0 fromOnly . listToMaybe <$> query conn sql (name, status)
-  where sql = fromString $ concat [ "SELECT count(*) FROM `", prefix, "_orders` "
-                                  , "WHERE `username` = ? AND `status` = ?"
-                                  ]
+countOrderByUserNameAndStatus :: UserName -> OrderStatus -> PSQL Int64
+countOrderByUserNameAndStatus name status =
+  count orders "username = ? AND status = ?" (name, status)
